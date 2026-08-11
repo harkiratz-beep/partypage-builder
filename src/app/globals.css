@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Only two things live here:
+ *   1. the theme variable, so a theme can be swapped per-event at runtime
+ *   2. base page colours
+ * Everything else is Tailwind utilities on the elements themselves.
+ */
+
+:root {
+  --accent: #c2410c;
+  --accent-soft: #fff2e8;
+  --hero: linear-gradient(150deg, #f97316, #c2410c 55%, #7c2d12);
+}
+
+html,
+body {
+  @apply bg-page text-ink antialiased;
+}
+
+/* Comfortable tap targets on phones. */
+@layer base {
+  button,
+  a[role='button'] {
+    @apply min-h-[44px];
+  }
+}

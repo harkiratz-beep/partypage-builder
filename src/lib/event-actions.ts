@@ -144,7 +144,8 @@ export async function deleteEvent(id: string): Promise<Result<{ id: string }>> {
 }
 
 /**
- * Hero photo — the watermark behind the invite header.
+ * The invite photo, shown whole at the top of the public page and reused for
+ * the downloadable invite picture and the WhatsApp link preview.
  *
  * Uploaded through the service role rather than straight from the browser:
  * the anon key deliberately cannot write to the bucket, and handing the public
@@ -205,30 +206,6 @@ export async function uploadHeroImage(id: string, formData: FormData): Promise<R
   }
 
   await removeStoredFile(supabase, previous?.hero_image_url ?? null);
-
-  revalidatePath('/admin');
-  revalidatePath(`/${data.slug}`);
-  return { data, error: null };
-}
-
-export async function setHeroOpacity(id: string, opacity: number): Promise<Result<Event>> {
-  const denied = await assertAdmin();
-  if (denied) return { data: null, error: { message: denied } };
-
-  const clamped = Math.min(1, Math.max(0, Number.isFinite(opacity) ? opacity : 0.18));
-
-  const supabase = await supabaseAsAdmin();
-  const { data, error } = await supabase
-    .from('events')
-    .update({ hero_image_opacity: clamped })
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('setHeroOpacity', error);
-    return { data: null, error: { message: "Couldn't save that." } };
-  }
 
   revalidatePath('/admin');
   revalidatePath(`/${data.slug}`);

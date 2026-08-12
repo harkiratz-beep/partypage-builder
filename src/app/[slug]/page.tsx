@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getEventBySlug, listGalleryImages, listUpdates } from '@/lib/queries';
-import { formatDateLong, formatTimeRange } from '@/lib/format';
+import { formatDateLong, formatTimeRange, mapsHref } from '@/lib/format';
 import { RsvpForm } from '@/components/RsvpForm';
 import { UpdatesSection } from '@/components/public/UpdatesSection';
 import { GallerySection } from '@/components/public/GallerySection';
@@ -19,9 +19,21 @@ export async function generateMetadata({ params }: Props) {
     const event = await getEventBySlug(slug);
     if (!event) return { title: 'Invite not found' };
 
+    const description = [
+      event.age !== null ? `${event.child_name} is turning ${event.age}` : event.child_name,
+      formatDateLong(event.date),
+      event.venue_name,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+    // og:image is supplied by opengraph-image.tsx; openGraph is set here so
+    // the title and description in a chat preview read like an invitation
+    // rather than like a web page.
     return {
       title: event.title,
-      description: [formatDateLong(event.date), event.venue_name].filter(Boolean).join(' · '),
+      description,
+      openGraph: { title: event.title, description, type: 'website' },
     };
   } catch {
     return { title: 'Invite' };
@@ -37,6 +49,16 @@ function SectionShell({ title, children }: { title: string; children: React.Reac
   );
 }
 
+/** One line of the details card: a small grey label above the real content. */
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</span>
+      <div className="text-[15px]">{children}</div>
+    </div>
+  );
+}
+
 export default async function EventPage({ params }: Props) {
   const { slug } = await params;
 
@@ -48,55 +70,74 @@ export default async function EventPage({ params }: Props) {
     listGalleryImages(event.id),
   ]);
 
+  const maps = mapsHref(event);
+
   return (
     <div className="flex flex-col gap-4">
-      <header
-        className="relative overflow-hidden rounded-2xl px-5 py-8 text-center text-white"
-        style={{ background: 'var(--hero)' }}
-      >
-        {/*
-          The hero photo, as a watermark: the gradient stays underneath and the
-          photo is laid over it at the strength the host chose, so the text on
-          top keeps its contrast whatever picture gets uploaded. Decorative
-          only, hence the empty alt and aria-hidden.
-
-          A plain <img> rather than next/image — the file sits on a Supabase
-          domain that would need allow-listing in next.config, and the
-          optimiser buys nothing for a background wash.
-        */}
-        {event.hero_image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={event.hero_image_url}
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-            style={{ opacity: event.hero_image_opacity }}
-          />
-        )}
-
-        <div className="relative">
+      {/*
+        The photo, and only the photo.
+        No text sits on top of it, so nothing has to be legible against an
+        unknown image, and no crop is needed: width 100%, height auto keeps
+        the picture at its own proportions whether it is a tall portrait or a
+        wide snapshot. Everything the guest needs to read lives in the card
+        below instead.
+      */}
+      {event.hero_image_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={event.hero_image_url}
+          alt={`${event.child_name}'s birthday`}
+          className="w-full rounded-2xl"
+        />
+      ) : (
+        <div
+          className="rounded-2xl px-5 py-10 text-center text-white"
+          style={{ background: 'var(--hero)' }}
+        >
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] opacity-90">
             You&apos;re invited
           </p>
-          <h1 className="mt-2.5 text-4xl font-bold leading-none">{event.child_name}</h1>
-          {event.age !== null && (
-            <p className="mt-3 inline-block rounded-full border border-white/35 bg-white/20 px-4 py-1 text-sm font-bold">
-              is turning {event.age}
-            </p>
-          )}
-          <p className="mt-3 text-sm opacity-90">{event.title}</p>
-          <p className="mt-4 text-[15px] font-semibold">
-            {formatDateLong(event.date)}
-            <br />
-            {formatTimeRange(event.start_time, event.end_time)}
-          </p>
         </div>
-      </header>
+      )}
 
-      <SectionShell title="Details">
-        <p className="font-semibold">{event.venue_name}</p>
-        {event.venue_address && <p className="text-sm text-muted">{event.venue_address}</p>}
+      <div className="text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+          You&apos;re invited
+        </p>
+        <h1 className="mt-1.5 text-4xl font-bold leading-none">{event.child_name}</h1>
+        {event.age !== null && (
+          <p className="mt-2 text-lg text-muted">is turning {event.age}</p>
+        )}
+      </div>
+
+      <SectionShell title="When and where">
+        <div className="flex flex-col gap-3">
+          <DetailRow label="Date">{formatDateLong(event.date)}</DetailRow>
+
+          {event.start_time && (
+            <DetailRow label="Time">{formatTimeRange(event.start_time, event.end_time)}</DetailRow>
+          )}
+
+          {event.venue_name && (
+            <DetailRow label="Venue">
+              <p className="font-semibold">{event.venue_name}</p>
+              {event.venue_address && (
+                <p className="text-sm text-muted">{event.venue_address}</p>
+              )}
+            </DetailRow>
+          )}
+
+          {maps && (
+            <a
+              href={maps}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-h-[44px] items-center justify-center rounded-xl bg-accent px-4 py-3 font-semibold text-white"
+            >
+              Open in Google Maps
+            </a>
+          )}
+        </div>
       </SectionShell>
 
       {event.host_message && (

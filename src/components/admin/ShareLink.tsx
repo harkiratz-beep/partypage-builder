@@ -79,6 +79,22 @@ export function ShareLink({
           WhatsApp
         </a>
       </div>
+
+      {/*
+        Two different things, deliberately both offered:
+        sending the *link* gets a live page that can be updated and can take
+        RSVPs; sending the *picture* gets something that shows up in the chat
+        without anyone having to tap. Most people want to send both.
+      */}
+      <a
+        href={`/${slug}/invite-image`}
+        className={buttonClass}
+      >
+        Download invite image
+      </a>
+      <p className="text-xs text-muted">
+        The picture is for sending as a photo. The link is the live invite that takes RSVPs.
+      </p>
     </div>
   );
 }

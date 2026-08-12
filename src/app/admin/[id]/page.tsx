@@ -41,11 +41,7 @@ export default async function EditEventPage({ params }: Props) {
         />
       </section>
 
-      <HeroImageCard
-        eventId={event.id}
-        imageUrl={event.hero_image_url}
-        opacity={event.hero_image_opacity}
-      />
+      <HeroImageCard eventId={event.id} imageUrl={event.hero_image_url} />
 
       <EventForm eventId={event.id} initialValues={eventToInput(event)} />
 

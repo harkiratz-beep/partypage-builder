@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { signOut } from '@/app/login/actions';
 import { listEventsForHost } from '@/lib/admin-queries';
 import { formatDateLong } from '@/lib/format';
 import type { EventStatus } from '@/lib/types';
@@ -18,16 +19,37 @@ function StatusBadge({ status }: { status: EventStatus }) {
 }
 
 export default async function AdminPage() {
-  const events = await listEventsForHost();
+  let events: Awaited<ReturnType<typeof listEventsForHost>>;
+  try {
+    events = await listEventsForHost();
+  } catch (error) {
+    // Almost always the service role key missing from the environment.
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-lg font-bold">Your events</h1>
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-3 text-sm text-red-800">
+          {error instanceof Error ? error.message : 'Could not load events.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-lg font-bold">Your events</h1>
-        <Link href="/admin/new"
-              className="flex items-center rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white">
-          New event
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/new"
+                className="flex items-center rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white">
+            New event
+          </Link>
+          <form action={signOut}>
+            <button type="submit"
+                    className="rounded-lg border border-line px-3 py-2 text-sm font-semibold text-muted">
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
 
       {events.length === 0 ? (

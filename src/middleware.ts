@@ -1,41 +1,23 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth/session';
 
 /**
- * Refreshes the session cookie and keeps signed-out visitors off /admin.
- * RLS is the real protection — this is so the host sees a login page rather
- * than a mysteriously empty list.
+ * Keeps signed-out visitors off /admin.
+ *
+ * This is convenience, not the security boundary: every host action calls
+ * requireHost() itself, and guest-facing data is still protected by RLS.
  */
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const session = await verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value);
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options));
-        },
-      },
-    },
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user && request.nextUrl.pathname.startsWith('/admin')) {
+  if (!session) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
+    url.search = '?error=auth';
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = { matcher: ['/admin/:path*'] };

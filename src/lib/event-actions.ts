@@ -1,26 +1,26 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerClient } from './supabase/server';
+import { supabaseAdmin } from './supabase/admin';
+import { getHostSession } from './auth/host';
 import { slugify, validateEvent, type EventInput } from './event-validation';
 import type { Event, Result } from './types';
 
 /**
- * Host writes. Uses the cookie-backed client, so RLS sees an authenticated
- * user — the anon key alone cannot insert into `events`.
+ * Host writes. The service role client bypasses RLS, so the signed session
+ * cookie is the only thing standing in front of it — check it first, always.
  */
 export async function createEvent(input: EventInput): Promise<Result<Event>> {
+  if (!(await getHostSession())) {
+    return { data: null, error: { message: 'Please sign in first.' } };
+  }
+
   const errors = validateEvent(input);
   if (Object.keys(errors).length) {
     return { data: null, error: { message: Object.values(errors)[0] } };
   }
 
-  const supabase = await createSupabaseServerClient();
-
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { data: null, error: { message: 'Please sign in first.' } };
-
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin()
     .from('events')
     .insert({
       child_name: input.child_name.trim(),

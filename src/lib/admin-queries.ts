@@ -1,24 +1,20 @@
 import 'server-only';
-import { createSupabaseServerClient } from './supabase/server';
+import { supabaseAdmin } from './supabase/admin';
+import { requireHost } from './auth/host';
 import type { Event } from './types';
 
 /**
- * Host reads. Separate from lib/queries.ts because these run through the
- * cookie client and therefore see drafts too.
+ * Host reads. Separate from lib/queries.ts because these see drafts too —
+ * which is precisely why every one of them checks the session first.
  */
 export async function listEventsForHost(): Promise<Event[]> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  await requireHost();
+
+  const { data, error } = await supabaseAdmin()
     .from('events')
     .select('*')
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
   return data ?? [];
-}
-
-export async function getSignedInUser() {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  return data.user;
 }

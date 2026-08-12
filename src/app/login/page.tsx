@@ -1,53 +1,72 @@
-'use client';
-
-import { useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
-import { TextField } from '@/components/ui/form';
+import { redirect } from 'next/navigation';
+import { getHostSession } from '@/lib/auth/host';
+import { signIn } from './actions';
 
 /**
- * Magic-link sign-in. One host account is enough for a family app — the RLS
- * policies treat any signed-in user as the host.
+ * Host sign-in.
+ *
+ * A plain server-rendered form posting to a server action — no client
+ * component, so no credential handling ever reaches the browser bundle.
  */
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+export const metadata = { title: 'Host sign-in' };
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true); setError('');
+const MESSAGES: Record<string, string> = {
+  '1': 'Wrong username or password.',
+  config: 'The site is missing its server configuration. Set SUPABASE_SERVICE_ROLE_KEY in Netlify.',
+  auth: 'Please sign in to continue.',
+};
 
-    const supabase = createSupabaseBrowserClient();
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  if (await getHostSession()) redirect('/admin');
 
-    setBusy(false);
-    if (err) { setError(err.message); return; }
-    setSent(true);
-  }
-
-  if (sent) {
-    return (
-      <p className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">
-        Check your email for the sign-in link.
-      </p>
-    );
-  }
+  const { error } = await searchParams;
+  const message = error ? MESSAGES[error] ?? MESSAGES['1'] : null;
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+    <form action={signIn} className="flex flex-col gap-4">
       <h1 className="text-lg font-bold">Host sign-in</h1>
-      <TextField id="login-email" label="Email" type="email" autoComplete="email"
-                 value={email} onChange={setEmail} placeholder="you@example.com" />
-      {error && (
-        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-800">{error}</p>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="username" className="text-sm font-semibold">Username</label>
+        <input
+          id="username"
+          name="username"
+          type="text"
+          required
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          className="rounded-xl border border-line bg-surface px-3 py-3 text-base outline-none focus:border-accent"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="password" className="text-sm font-semibold">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          required
+          autoComplete="current-password"
+          className="rounded-xl border border-line bg-surface px-3 py-3 text-base outline-none focus:border-accent"
+        />
+      </div>
+
+      {message && (
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-800">
+          {message}
+        </p>
       )}
-      <button type="submit" disabled={busy}
-              className="rounded-xl bg-accent px-4 py-3 font-semibold text-white disabled:opacity-50">
-        {busy ? 'Sending…' : 'Email me a sign-in link'}
+
+      <button
+        type="submit"
+        className="rounded-xl bg-accent px-4 py-3 font-semibold text-white"
+      >
+        Sign in
       </button>
     </form>
   );

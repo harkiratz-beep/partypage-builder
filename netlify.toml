@@ -8,4 +8,9 @@
 # Set these in Site configuration > Environment variables:
 #   NEXT_PUBLIC_SUPABASE_URL
 #   NEXT_PUBLIC_SUPABASE_ANON_KEY
-#   NEXT_PUBLIC_SITE_URL   (your real https:// origin — used for share links/OG)
+#   NEXT_PUBLIC_SITE_URL          (your real https:// origin — share links/OG)
+#   SUPABASE_SERVICE_ROLE_KEY     (required — host area; server-side only)
+#
+# Optional:
+#   HOST_USERNAME / HOST_PASSWORD (defaults: Anaya / Anaya)
+#   SESSION_SECRET                (defaults to a key derived from the service role key)

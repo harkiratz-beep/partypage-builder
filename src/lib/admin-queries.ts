@@ -71,8 +71,7 @@ export async function getEventForHost(id: string): Promise<Event | null> {
  * notes. Admin-only, twice over: requireAdmin() here, and supabaseAsAdmin()
  * refuses to hand over a client to anyone else.
  *
- * Nothing in the UI calls this yet; it exists so that when an RSVP screen is
- * built, the guarded path is the obvious one to reach for.
+ * Feeds the RSVP list on the event page.
  */
 export async function listRsvpsForEvent(eventId: string): Promise<Rsvp[]> {
   await requireAdmin();
@@ -86,4 +85,64 @@ export async function listRsvpsForEvent(eventId: string): Promise<Rsvp[]> {
 
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+/** Headline numbers for one event's replies. */
+export interface RsvpSummary {
+  /** Replies that said yes. */
+  attending: number;
+  /** Replies that said no. */
+  declined: number;
+  /** People actually coming — the sum of guest_count, not the reply count. */
+  heads: number;
+  /** Every reply, either way. */
+  replies: number;
+}
+
+export function emptyRsvpSummary(): RsvpSummary {
+  return { attending: 0, declined: 0, heads: 0, replies: 0 };
+}
+
+export function summariseRsvps(rsvps: Rsvp[]): RsvpSummary {
+  return rsvps.reduce<RsvpSummary>((total, rsvp) => {
+    total.replies += 1;
+    if (rsvp.attending) {
+      total.attending += 1;
+      // guest_count is the party size including the guest who replied, so it
+      // is the number to add — not 1 + guest_count.
+      total.heads += rsvp.guest_count;
+    } else {
+      total.declined += 1;
+    }
+    return total;
+  }, emptyRsvpSummary());
+}
+
+/**
+ * Reply counts for every event at once, for the admin list.
+ *
+ * One query rather than one per event: only the three columns the arithmetic
+ * needs are fetched, and no names or mobile numbers are pulled for a screen
+ * that never displays them.
+ */
+export async function summariseAllRsvps(): Promise<Record<string, RsvpSummary>> {
+  await requireAdmin();
+
+  const supabase = await supabaseAsAdmin();
+  const { data, error } = await supabase.from('rsvps').select('event_id, attending, guest_count');
+
+  if (error) throw new Error(error.message);
+
+  const byEvent: Record<string, RsvpSummary> = {};
+  for (const row of data ?? []) {
+    const summary = (byEvent[row.event_id] ??= emptyRsvpSummary());
+    summary.replies += 1;
+    if (row.attending) {
+      summary.attending += 1;
+      summary.heads += row.guest_count;
+    } else {
+      summary.declined += 1;
+    }
+  }
+  return byEvent;
 }

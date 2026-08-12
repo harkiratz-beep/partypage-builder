@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { signOut } from '@/app/login/actions';
 import { ShareLink } from '@/components/admin/ShareLink';
 import { DeleteEventButton } from '@/components/admin/DeleteEventButton';
-import { listEventsForHost } from '@/lib/admin-queries';
+import {
+  emptyRsvpSummary, listEventsForHost, summariseAllRsvps, type RsvpSummary,
+} from '@/lib/admin-queries';
 import { getRole } from '@/lib/auth/host';
 import { formatDateLong } from '@/lib/format';
 import type { EventStatus } from '@/lib/types';
@@ -21,6 +23,28 @@ function StatusBadge({ status }: { status: EventStatus }) {
   );
 }
 
+/**
+ * The at-a-glance reply count.
+ *
+ * "Coming" is the head count (the sum of party sizes), not the number of
+ * replies — that is the number a host needs for cake and party bags.
+ */
+function RsvpTally({ summary }: { summary: RsvpSummary }) {
+  if (summary.replies === 0) {
+    return <p className="text-sm text-muted">No RSVPs yet</p>;
+  }
+
+  return (
+    <p className="text-sm">
+      <span className="font-semibold text-emerald-700">{summary.heads} coming</span>
+      <span className="text-muted">
+        {' · '}
+        {summary.attending} yes, {summary.declined} no
+      </span>
+    </p>
+  );
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
@@ -31,8 +55,13 @@ export default async function AdminPage({
   const { error: notice } = await searchParams;
 
   let events: Awaited<ReturnType<typeof listEventsForHost>>;
+  // Reply counts are admin-only, so the read-only role simply gets none —
+  // rather than the page failing for them.
+  let rsvpCounts: Awaited<ReturnType<typeof summariseAllRsvps>> = {};
+
   try {
     events = await listEventsForHost();
+    if (isAdmin) rsvpCounts = await summariseAllRsvps();
   } catch (error) {
     // Almost always the service role key missing from the environment.
     return (
@@ -92,6 +121,8 @@ export default async function AdminPage({
                 </div>
                 <StatusBadge status={event.status} />
               </div>
+
+              {isAdmin && <RsvpTally summary={rsvpCounts[event.id] ?? emptyRsvpSummary()} />}
 
               <ShareLink
                 slug={event.slug}

@@ -1,8 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth/session';
 
-/** Routes only an admin may open. */
-const ADMIN_ONLY = ['/admin/new'];
+/**
+ * Routes only an admin may open: everything under /admin except the list page
+ * itself, which the read-only guest role is allowed to see.
+ *
+ * Stated as "anything deeper than /admin" rather than a list of paths, so a
+ * page added later is locked by default instead of being forgotten.
+ */
+function isAdminOnly(pathname: string): boolean {
+  return pathname.startsWith('/admin/') && pathname !== '/admin/';
+}
 
 /**
  * Keeps signed-out visitors off /admin, and the read-only guest role off the
@@ -22,8 +30,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const needsAdmin = ADMIN_ONLY.some(path => request.nextUrl.pathname.startsWith(path));
-  if (needsAdmin && session.r !== 'admin') {
+  if (isAdminOnly(request.nextUrl.pathname) && session.r !== 'admin') {
     const url = request.nextUrl.clone();
     url.pathname = '/admin';
     url.search = '?error=readonly';

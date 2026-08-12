@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createEvent } from '@/lib/event-actions';
+import { createEvent, updateEvent } from '@/lib/event-actions';
 import {
   EMPTY_EVENT, FIELD_ORDER, slugify, validateEvent, type EventInput,
 } from '@/lib/event-validation';
@@ -12,17 +12,33 @@ import type { EventStatus, ThemeId } from '@/lib/types';
 const STATUSES: readonly EventStatus[] = ['draft', 'published', 'completed'];
 const THEMES: readonly ThemeId[] = ['default', 'bloom', 'jungle', 'ocean'];
 
-export function EventForm() {
+/**
+ * One form, two jobs.
+ *
+ * `eventId` absent  → create. The link name is derived from the child's name.
+ * `eventId` present → edit. The link name is left exactly as saved, because
+ *                     changing it silently would break invites already sent.
+ */
+export function EventForm({
+  eventId,
+  initialValues,
+}: {
+  eventId?: string;
+  initialValues?: EventInput;
+}) {
+  const isEdit = Boolean(eventId);
   const router = useRouter();
-  const [values, setValues] = useState<EventInput>(EMPTY_EVENT);
+  const [values, setValues] = useState<EventInput>(initialValues ?? EMPTY_EVENT);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
+  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [slugTouched, setSlugTouched] = useState(false);
+  const [slugTouched, setSlugTouched] = useState(isEdit);
 
   // Editing a field clears that field's error.
   const set = <K extends keyof EventInput>(key: K) => (value: EventInput[K]) => {
     setValues(prev => ({ ...prev, [key]: value }));
+    setSaved(false);
     setErrors(prev => {
       if (!prev[key]) return prev;
       const next = { ...prev };
@@ -46,6 +62,7 @@ export function EventForm() {
     const found = validateEvent(values);
     setErrors(found);
     setFormError('');
+    setSaved(false);
     if (Object.keys(found).length) {
       const first = FIELD_ORDER.find(k => found[k]);
       document.getElementById(`f-${first}`)?.focus();
@@ -53,12 +70,23 @@ export function EventForm() {
     }
 
     setSaving(true);
-    const { data, error } = await createEvent(values);
+    const { data, error } = eventId
+      ? await updateEvent(eventId, values)
+      : await createEvent(values);
     setSaving(false);
 
     if (error || !data) { setFormError(error?.message ?? 'Save failed.'); return; }
 
-    router.push('/admin');
+    if (isEdit) {
+      // Stay put: the photo card and the delete button live on this page.
+      setSaved(true);
+      router.refresh();
+      return;
+    }
+
+    // A brand-new event goes straight to its own page, where the host can add
+    // the hero photo and copy the invite link.
+    router.push(`/admin/${data.id}`);
     router.refresh();
   }
 
@@ -80,7 +108,10 @@ export function EventForm() {
         <TextField id="f-slug" label="Link name" required
                    value={values.slug}
                    onChange={v => { setSlugTouched(true); set('slug')(v); }}
-                   error={errors.slug} hint={`Invite link: /${slugify(values.slug) || '…'}`}
+                   error={errors.slug}
+                   hint={isEdit
+                     ? 'Changing this breaks any invite you have already sent.'
+                     : `Invite link: /${slugify(values.slug) || '…'}`}
                    autoCapitalize="none" autoCorrect="off" spellCheck={false} />
       </FormSection>
 
@@ -135,10 +166,15 @@ export function EventForm() {
           {formError}
         </p>
       )}
+      {saved && !formError && (
+        <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+          Saved.
+        </p>
+      )}
 
       <button type="submit" disabled={saving}
               className="rounded-xl bg-accent px-4 py-3 font-semibold text-white disabled:opacity-50">
-        {saving ? 'Saving…' : 'Create event'}
+        {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create event'}
       </button>
     </form>
   );

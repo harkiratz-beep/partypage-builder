@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { signOut } from '@/app/login/actions';
+import { ShareLink } from '@/components/admin/ShareLink';
+import { DeleteEventButton } from '@/components/admin/DeleteEventButton';
 import { listEventsForHost } from '@/lib/admin-queries';
 import { getRole } from '@/lib/auth/host';
 import { formatDateLong } from '@/lib/format';
@@ -90,10 +92,28 @@ export default async function AdminPage({
                 </div>
                 <StatusBadge status={event.status} />
               </div>
-              <Link href={`/${event.slug}`}
-                    className="flex items-center justify-center rounded-lg border border-line px-3 py-2 text-sm font-semibold">
-                View invite
-              </Link>
+
+              <ShareLink
+                slug={event.slug}
+                title={event.title}
+                disabled={event.status === 'draft'}
+                disabledReason="Draft — publish it to get a shareable link."
+              />
+
+              <div className="flex gap-2">
+                <Link href={`/${event.slug}`}
+                      className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-line px-3 py-2 text-sm font-semibold">
+                  View
+                </Link>
+                {isAdmin && (
+                  <Link href={`/admin/${event.id}`}
+                        className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-line px-3 py-2 text-sm font-semibold">
+                    Edit
+                  </Link>
+                )}
+              </div>
+
+              {isAdmin && <DeleteEventButton eventId={event.id} title={event.title} />}
             </li>
           ))}
         </ul>

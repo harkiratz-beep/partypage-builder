@@ -3,7 +3,7 @@
  * form and the server action share exactly one copy.
  */
 
-import type { EventStatus, ThemeId } from './types';
+import type { Event, EventStatus, ThemeId } from './types';
 
 export interface EventInput {
   child_name: string;
@@ -29,6 +29,35 @@ export const EMPTY_EVENT: EventInput = {
   maps_url: '', rsvp_phone: '', host_message: '', thank_you_message: '',
   status: 'draft', theme_id: 'default',
 };
+
+/**
+ * A saved row, back into form shape.
+ *
+ * Every field becomes a string because that is what an <input> holds; null is
+ * an empty box, and a time comes out of Postgres as 'HH:MM:SS' but an
+ * <input type="time"> only accepts 'HH:MM'.
+ */
+export function eventToInput(event: Event): EventInput {
+  const time = (value: string | null) => (value ? value.slice(0, 5) : '');
+
+  return {
+    child_name: event.child_name ?? '',
+    age: event.age === null ? '' : String(event.age),
+    title: event.title ?? '',
+    slug: event.slug ?? '',
+    date: event.date ?? '',
+    start_time: time(event.start_time),
+    end_time: time(event.end_time),
+    venue_name: event.venue_name ?? '',
+    venue_address: event.venue_address ?? '',
+    maps_url: event.maps_url ?? '',
+    rsvp_phone: event.rsvp_phone ?? '',
+    host_message: event.host_message ?? '',
+    thank_you_message: event.thank_you_message ?? '',
+    status: event.status,
+    theme_id: event.theme_id,
+  };
+}
 
 export function slugify(value: string): string {
   return value

@@ -46,6 +46,27 @@ export async function listEventsForHost(): Promise<Event[]> {
 }
 
 /**
+ * One event by id, drafts included. Admin only — the edit screen it feeds can
+ * change and delete things, and it shows the contact number.
+ *
+ * Returns null rather than throwing on a missing row, so a stale bookmark
+ * renders a 404 instead of a 500.
+ */
+export async function getEventForHost(id: string): Promise<Event | null> {
+  await requireAdmin();
+
+  const supabase = await supabaseAsAdmin();
+  const { data, error } = await supabase.from('events').select('*').eq('id', id).maybeSingle();
+
+  if (error) {
+    // 22P02 = invalid_text_representation: the id in the URL is not a uuid.
+    if (error.code === '22P02') return null;
+    throw new Error(error.message);
+  }
+  return data;
+}
+
+/**
  * The only sanctioned way to read RSVP rows — guest names, mobile numbers and
  * notes. Admin-only, twice over: requireAdmin() here, and supabaseAsAdmin()
  * refuses to hand over a client to anyone else.

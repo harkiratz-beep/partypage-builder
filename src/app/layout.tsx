@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
+import { HeaderAdminLink } from '@/components/HeaderAdminLink';
 import { env } from '@/lib/env';
 import './globals.css';
 
@@ -30,12 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="flex-1 text-sm font-bold tracking-tight">
               PartyPage <span className="font-medium text-muted">Builder</span>
             </Link>
-            <Link
-              href="/admin"
-              className="rounded-lg border border-line bg-surface px-3 py-2 text-sm font-semibold"
-            >
-              Admin
-            </Link>
+            <HeaderAdminLink />
           </header>
 
           <main className="px-4 pb-12 pt-4">{children}</main>

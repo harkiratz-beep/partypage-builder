@@ -1,8 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
+import { env } from '@/lib/env';
 import './globals.css';
 
 export const metadata: Metadata = {
+  // Chat apps need an absolute og:image URL. Next.js builds one by resolving
+  // the generated image against metadataBase — and if metadataBase is unset it
+  // quietly uses http://localhost:3000, which no phone can fetch, so the
+  // preview just never appears. This one line is what makes the WhatsApp
+  // preview work.
+  metadataBase: new URL(env.siteUrl),
   title: 'PartyPage Builder',
   description: 'One link for the whole party.',
 };

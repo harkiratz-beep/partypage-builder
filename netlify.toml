@@ -10,7 +10,8 @@
 #   NEXT_PUBLIC_SUPABASE_ANON_KEY
 #   NEXT_PUBLIC_SITE_URL          (your real https:// origin — share links/OG)
 #   SUPABASE_SERVICE_ROLE_KEY     (required — host area; server-side only)
+#   HOST_PASSWORD                 (required — admin password; no default, never committed)
 #
 # Optional:
-#   HOST_USERNAME / HOST_PASSWORD (defaults: Anaya / Anaya)
-#   SESSION_SECRET                (defaults to a key derived from the service role key)
+#   HOST_USERNAME / GUEST_USERNAME (defaults: admin / guest)
+#   SESSION_SECRET                 (defaults to a key derived from the service role key)

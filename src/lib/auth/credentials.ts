@@ -1,30 +1,56 @@
 import 'server-only';
 
-import { timingSafeEqual } from './session';
+import { timingSafeEqual, type Role } from './session';
 
 /**
- * The one host login.
+ * The two logins.
  *
  * `server-only` above makes the build fail if this is ever pulled into a client
- * component, so the credentials cannot end up in the JavaScript sent to a
- * browser. They are read from plain (non-NEXT_PUBLIC_) environment variables,
- * which Next.js never inlines into the client bundle.
+ * component, and none of these variables are NEXT_PUBLIC_, so Next.js will not
+ * inline them into the browser bundle.
  *
- * The defaults exist so the site works the moment it deploys. To change the
- * login, set HOST_USERNAME and HOST_PASSWORD in Netlify → Site configuration →
- * Environment variables, then redeploy.
+ *   admin — full access. Password comes from HOST_PASSWORD and has NO default:
+ *           this repo is public, so a committed fallback would be a published
+ *           password. If HOST_PASSWORD is unset, admin sign-in always fails.
+ *   guest — read-only. Username alone; no password.
  */
-const HOST_USERNAME = process.env.HOST_USERNAME ?? 'Anaya';
-const HOST_PASSWORD = process.env.HOST_PASSWORD ?? 'Anaya';
+const ADMIN_USERNAME = process.env.HOST_USERNAME ?? 'admin';
+const GUEST_USERNAME = process.env.GUEST_USERNAME ?? 'guest';
+const ADMIN_PASSWORD = process.env.HOST_PASSWORD; // intentionally no fallback
 
-export function checkCredentials(username: string, password: string): boolean {
-  // Both compared every time — no early return that would leak which half was
-  // wrong through response timing.
-  const userOk = timingSafeEqual(username.trim(), HOST_USERNAME);
-  const passOk = timingSafeEqual(password, HOST_PASSWORD);
-  return userOk && passOk;
+let warned = false;
+
+function warnIfUnconfigured(): void {
+  if (warned) return;
+  warned = true;
+  console.error(
+    '[auth] HOST_PASSWORD is not set, so admin sign-in will always fail. ' +
+      'Set it in Netlify → Site configuration → Environment variables, then redeploy. ' +
+      'Guest sign-in is unaffected.',
+  );
 }
 
-export function hostUsername(): string {
-  return HOST_USERNAME;
+/** Returns the role that these credentials grant, or null. */
+export function authenticate(username: string, password: string): Role | null {
+  const name = username.trim();
+
+  // Evaluated before any early return so a wrong username and a wrong password
+  // cost the same amount of time.
+  const looksLikeAdmin = timingSafeEqual(name, ADMIN_USERNAME);
+  const looksLikeGuest = timingSafeEqual(name, GUEST_USERNAME);
+
+  if (looksLikeAdmin) {
+    if (!ADMIN_PASSWORD) {
+      warnIfUnconfigured();
+      return null;
+    }
+    return timingSafeEqual(password, ADMIN_PASSWORD) ? 'admin' : null;
+  }
+
+  // Guest is passwordless by design — whatever is in the password box is ignored.
+  if (looksLikeGuest) return 'guest';
+
+  return null;
 }
+
+export const usernames = { admin: ADMIN_USERNAME, guest: GUEST_USERNAME };

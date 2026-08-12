@@ -50,10 +50,10 @@ export default async function LoginPage({
           id="password"
           name="password"
           type="password"
-          required
           autoComplete="current-password"
           className="rounded-xl border border-line bg-surface px-3 py-3 text-base outline-none focus:border-accent"
         />
+        <p className="text-xs text-muted">Leave blank for the read-only guest login.</p>
       </div>
 
       {message && (

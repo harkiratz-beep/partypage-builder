@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { signOut } from '@/app/login/actions';
 import { listEventsForHost } from '@/lib/admin-queries';
+import { getRole } from '@/lib/auth/host';
 import { formatDateLong } from '@/lib/format';
 import type { EventStatus } from '@/lib/types';
 
@@ -18,7 +19,15 @@ function StatusBadge({ status }: { status: EventStatus }) {
   );
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const role = await getRole();
+  const isAdmin = role === 'admin';
+  const { error: notice } = await searchParams;
+
   let events: Awaited<ReturnType<typeof listEventsForHost>>;
   try {
     events = await listEventsForHost();
@@ -39,10 +48,12 @@ export default async function AdminPage() {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-lg font-bold">Your events</h1>
         <div className="flex items-center gap-2">
-          <Link href="/admin/new"
-                className="flex items-center rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white">
-            New event
-          </Link>
+          {isAdmin && (
+            <Link href="/admin/new"
+                  className="flex items-center rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white">
+              New event
+            </Link>
+          )}
           <form action={signOut}>
             <button type="submit"
                     className="rounded-lg border border-line px-3 py-2 text-sm font-semibold text-muted">
@@ -51,6 +62,14 @@ export default async function AdminPage() {
           </form>
         </div>
       </div>
+
+      {!isAdmin && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+          {notice === 'readonly'
+            ? 'That page is for the admin. You have read-only access.'
+            : 'Read-only access. Sign in as the admin to make changes.'}
+        </p>
+      )}
 
       {events.length === 0 ? (
         <p className="rounded-card border border-dashed border-line p-6 text-center text-sm text-muted">

@@ -14,9 +14,18 @@
 export const SESSION_COOKIE = 'pp_host';
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
+/** `admin` can change things. `guest` can only look. */
+export type Role = 'admin' | 'guest';
+
+export function isRole(value: unknown): value is Role {
+  return value === 'admin' || value === 'guest';
+}
+
 export interface SessionPayload {
   /** Username that signed in. */
   u: string;
+  /** Role. Inside the signed payload, so it cannot be edited client-side. */
+  r: Role;
   /** Expiry, epoch seconds. */
   exp: number;
 }
@@ -80,9 +89,10 @@ export function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function createSessionToken(username: string): Promise<string> {
+export async function createSessionToken(username: string, role: Role): Promise<string> {
   const payload: SessionPayload = {
     u: username,
+    r: role,
     exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE,
   };
   const body = toBase64Url(encoder.encode(JSON.stringify(payload)));
@@ -113,6 +123,8 @@ export async function verifySessionToken(
   try {
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as SessionPayload;
     if (typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now()) return null;
+    // An unrecognised role is a rejected session, never a downgraded one.
+    if (!isRole(payload.r)) return null;
     return payload;
   } catch {
     return null;

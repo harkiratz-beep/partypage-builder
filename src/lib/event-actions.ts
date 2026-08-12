@@ -1,18 +1,20 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { supabaseAdmin } from './supabase/admin';
-import { getHostSession } from './auth/host';
+import { supabaseAsAdmin } from './supabase/admin';
+import { getRole } from './auth/host';
 import { slugify, validateEvent, type EventInput } from './event-validation';
 import type { Event, Result } from './types';
 
 /**
- * Host writes. The service role client bypasses RLS, so the signed session
- * cookie is the only thing standing in front of it — check it first, always.
+ * Host writes. Admin only — the guest role is read-only, and the service role
+ * client bypasses RLS, so this check is the whole boundary.
  */
 export async function createEvent(input: EventInput): Promise<Result<Event>> {
-  if (!(await getHostSession())) {
-    return { data: null, error: { message: 'Please sign in first.' } };
+  const role = await getRole();
+  if (!role) return { data: null, error: { message: 'Please sign in first.' } };
+  if (role !== 'admin') {
+    return { data: null, error: { message: 'Read-only access — ask the admin to make changes.' } };
   }
 
   const errors = validateEvent(input);
@@ -20,7 +22,9 @@ export async function createEvent(input: EventInput): Promise<Result<Event>> {
     return { data: null, error: { message: Object.values(errors)[0] } };
   }
 
-  const { data, error } = await supabaseAdmin()
+  const supabase = await supabaseAsAdmin();
+
+  const { data, error } = await supabase
     .from('events')
     .insert({
       child_name: input.child_name.trim(),

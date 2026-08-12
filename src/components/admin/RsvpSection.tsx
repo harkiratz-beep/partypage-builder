@@ -34,6 +34,21 @@ function prettyMobile(mobile: string): string {
   return mobile;
 }
 
+/**
+ * "2 people (Mannat + 1 guest)" beats a bare "2".
+ *
+ * guest_count is the whole party including the person replying, so the number
+ * of extra guests is one less than that — the arithmetic every host does in
+ * their head, done here instead.
+ */
+function headcountLine(guestName: string, guestCount: number): string {
+  const firstName = guestName.trim().split(/\s+/)[0] || guestName;
+  const others = Math.max(0, guestCount - 1);
+
+  if (guestCount <= 1) return `1 person — ${firstName} only`;
+  return `${guestCount} people — ${firstName} + ${others} ${others === 1 ? 'guest' : 'guests'}`;
+}
+
 function submittedOn(value: string): string {
   const date = new Date(value);
   if (isNaN(date.getTime())) return '';
@@ -80,7 +95,7 @@ export function RsvpSection({ rsvps }: { rsvps: Rsvp[] }) {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{rsvp.guest_name}</p>
+                  <p className="text-[15px] font-semibold">{rsvp.guest_name}</p>
                   <a
                     href={`tel:${rsvp.mobile.replace(/\s/g, '')}`}
                     className="font-mono text-sm text-accent"
@@ -96,13 +111,23 @@ export function RsvpSection({ rsvps }: { rsvps: Rsvp[] }) {
                         : 'bg-stone-100 text-stone-600'
                     }`}
                   >
-                    {rsvp.attending ? `Coming · ${rsvp.guest_count}` : 'Not coming'}
+                    {rsvp.attending ? 'Coming' : 'Not coming'}
                   </span>
                   <span className="text-[11px] text-muted">{submittedOn(rsvp.submitted_at)}</span>
                 </div>
               </div>
 
-              {rsvp.note && <p className="text-sm text-muted">“{rsvp.note}”</p>}
+              {rsvp.attending && (
+                <p className="text-sm font-semibold text-emerald-800">
+                  {headcountLine(rsvp.guest_name, rsvp.guest_count)}
+                </p>
+              )}
+
+              {rsvp.note && (
+                <p className="mt-0.5 border-l-2 border-line pl-2.5 text-sm italic text-muted">
+                  “{rsvp.note}”
+                </p>
+              )}
             </li>
           ))}
         </ul>

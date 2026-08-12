@@ -33,7 +33,11 @@ export function inviteCardSize(shape: CardShape) {
   return SIZES[shape];
 }
 
-export function renderInviteCard(event: Event, shape: CardShape): ImageResponse {
+export function renderInviteCard(
+  event: Event,
+  shape: CardShape,
+  inviteUrl?: string,
+): ImageResponse {
   const { width, height } = SIZES[shape];
   const portrait = shape === 'portrait';
 
@@ -125,22 +129,57 @@ export function renderInviteCard(event: Event, shape: CardShape): ImageResponse 
         </div>
       )}
 
-      <div style={{ display: 'flex', marginTop: px(38), fontSize: px(24), color: '#a8a29e' }}>
-        Tap the link to RSVP
-      </div>
+      {/*
+        Nothing on a picture is tappable — it is a photo in a chat, not a web
+        page. So the card prints the address itself, big enough to read off a
+        screen and type in, rather than telling people to tap something that
+        cannot be tapped.
+      */}
+      {inviteUrl && (
+        <div style={{ display: 'flex', flexDirection: 'column', marginTop: px(38) }}>
+          <div style={{ display: 'flex', fontSize: px(22), color: '#a8a29e' }}>
+            RSVP at
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              marginTop: px(6),
+              fontSize: px(24),
+              fontWeight: 700,
+              color: '#c2410c',
+            }}
+          >
+            {inviteUrl.replace(/^https?:\/\//, '')}
+          </div>
+        </div>
+      )}
     </div>
   );
 
+  const photoBox = {
+    width: portrait ? width : Math.round(width * 0.42),
+    height: portrait ? Math.round(height * 0.52) : height,
+  };
+
   const photo = event.hero_image_url ? (
-    <img
-      src={event.hero_image_url}
-      alt=""
+    // 'contain', not 'cover': the whole photo has to be visible. Cropping to
+    // fill the box quietly cut the top and bottom off tall pictures — heads
+    // included. The gradient behind fills whatever space the photo does not.
+    <div
       style={{
-        width: portrait ? width : Math.round(width * 0.42),
-        height: portrait ? Math.round(height * 0.52) : height,
-        objectFit: 'cover',
+        display: 'flex',
+        ...photoBox,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundImage: GRADIENT,
       }}
-    />
+    >
+      <img
+        src={event.hero_image_url}
+        alt=""
+        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+      />
+    </div>
   ) : (
     // No photo: a plain band of the theme gradient keeps the composition.
     <div

@@ -1,7 +1,7 @@
 import 'server-only';
 import { supabaseAsAdmin, supabaseAsHost } from './supabase/admin';
 import { requireAdmin, requireSession } from './auth/host';
-import type { Event, Rsvp } from './types';
+import type { Event, GalleryImage, Rsvp } from './types';
 
 /**
  * Host reads. Separate from lib/queries.ts because these see drafts too —
@@ -82,6 +82,24 @@ export async function listRsvpsForEvent(eventId: string): Promise<Rsvp[]> {
     .select('*')
     .eq('event_id', eventId)
     .order('submitted_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/**
+ * Every photo for an event, hidden ones included — the host needs to see what
+ * a guest took down, which the guest-facing query deliberately filters out.
+ */
+export async function listAllGalleryImages(eventId: string): Promise<GalleryImage[]> {
+  await requireAdmin();
+
+  const supabase = await supabaseAsAdmin();
+  const { data, error } = await supabase
+    .from('gallery_images')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('sort_order', { ascending: true });
 
   if (error) throw new Error(error.message);
   return data ?? [];

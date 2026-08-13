@@ -162,8 +162,8 @@ export default async function EventPage({ params }: Props) {
           : <p className="text-sm text-muted">RSVPs are closed.</p>}
       </SectionShell>
 
-      <SectionShell title="Gallery">
-        <GallerySection images={images} />
+      <SectionShell title="Party photos">
+        <GallerySection slug={event.slug} images={images} />
       </SectionShell>
 
       {event.status === 'completed' && event.thank_you_message && (

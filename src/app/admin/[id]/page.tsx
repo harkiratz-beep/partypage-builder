@@ -5,7 +5,8 @@ import { HeroImageCard } from '@/components/admin/HeroImageCard';
 import { ShareLink } from '@/components/admin/ShareLink';
 import { DeleteEventButton } from '@/components/admin/DeleteEventButton';
 import { RsvpSection } from '@/components/admin/RsvpSection';
-import { getEventForHost, listRsvpsForEvent } from '@/lib/admin-queries';
+import { GalleryManager } from '@/components/admin/GalleryManager';
+import { getEventForHost, listAllGalleryImages, listRsvpsForEvent } from '@/lib/admin-queries';
 import { getRole } from '@/lib/auth/host';
 import { eventToInput } from '@/lib/event-validation';
 
@@ -21,7 +22,10 @@ export default async function EditEventPage({ params }: Props) {
   const event = await getEventForHost(id);
   if (!event) notFound();
 
-  const rsvps = await listRsvpsForEvent(event.id);
+  const [rsvps, photos] = await Promise.all([
+    listRsvpsForEvent(event.id),
+    listAllGalleryImages(event.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -45,6 +49,8 @@ export default async function EditEventPage({ params }: Props) {
       </section>
 
       <RsvpSection rsvps={rsvps} />
+
+      <GalleryManager eventId={event.id} images={photos} />
 
       <HeroImageCard eventId={event.id} imageUrl={event.hero_image_url} />
 

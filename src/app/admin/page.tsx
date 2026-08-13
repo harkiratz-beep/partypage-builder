@@ -122,7 +122,15 @@ export default async function AdminPage({
                 <StatusBadge status={event.status} />
               </div>
 
-              {isAdmin && <RsvpTally summary={rsvpCounts[event.id] ?? emptyRsvpSummary()} />}
+              {isAdmin && (
+                <Link
+                  href={`/admin/${event.id}/rsvps`}
+                  className="flex items-center justify-between gap-2 rounded-lg bg-accent-soft px-3 py-2.5"
+                >
+                  <RsvpTally summary={rsvpCounts[event.id] ?? emptyRsvpSummary()} />
+                  <span className="shrink-0 text-sm font-semibold text-accent">See names →</span>
+                </Link>
+              )}
 
               <ShareLink
                 slug={event.slug}

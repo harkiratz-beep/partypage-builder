@@ -140,15 +140,9 @@ export default async function EventPage({ params }: Props) {
         </div>
       </SectionShell>
 
-      {/*
-        The host's own words, set larger than everything under it. This is the
-        one bit of the page written by a person rather than assembled from
-        fields, so it should read like the message it is — not like another
-        row of data. whitespace-pre-line keeps the line breaks the host typed.
-      */}
       {event.host_message && (
         <SectionShell title="A note from the host">
-          <p className="whitespace-pre-line text-lg leading-relaxed">{event.host_message}</p>
+          <p>{event.host_message}</p>
         </SectionShell>
       )}
 

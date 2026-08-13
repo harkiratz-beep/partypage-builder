@@ -25,7 +25,5 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     return new Response('Not found', { status: 404 });
   }
 
-  // The preview appears attached to the link itself, which is already
-  // tappable — so no printed address here, unlike the downloadable card.
   return renderInviteCard(event, 'preview');
 }

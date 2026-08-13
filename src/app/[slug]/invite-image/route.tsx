@@ -1,6 +1,5 @@
 import { getEventBySlug } from '@/lib/queries';
 import { renderInviteCard } from '@/lib/invite-card';
-import { env } from '@/lib/env';
 
 /**
  * The downloadable invite picture — the thing a host actually attaches in
@@ -14,7 +13,7 @@ import { env } from '@/lib/env';
 export const revalidate = 60;
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
@@ -24,10 +23,7 @@ export async function GET(
   // cannot leak an invite image either.
   if (!event) return new Response('Not found', { status: 404 });
 
-  // The address printed on the card. Taken from the request when possible, so
-  // a preview domain prints its own URL rather than the production one.
-  const origin = new URL(request.url).origin || env.siteUrl;
-  const image = renderInviteCard(event, 'portrait', `${origin}/${slug}`);
+  const image = renderInviteCard(event, 'portrait');
 
   const headers = new Headers(image.headers);
   headers.set('Content-Disposition', `attachment; filename="${slug}-invite.png"`);
